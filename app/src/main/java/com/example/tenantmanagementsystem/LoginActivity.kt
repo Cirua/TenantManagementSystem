@@ -24,6 +24,7 @@ class LoginActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             val intent = Intent(this, MainActivity::class.java)
+            intent.putExtra("EMAIL", email)
             startActivity(intent)
             finish()
         }
