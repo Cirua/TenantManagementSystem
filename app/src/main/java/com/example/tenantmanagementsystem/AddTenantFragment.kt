@@ -20,40 +20,38 @@ class AddTenantFragment : Fragment() {
         return binding.root
     }
 
-    fun onViewCreated(
+    override fun onViewCreated(
         view: View,
-        savedInstanceState: Bundle?,
-        setOnClickListener: Any.(() -> Unit?) -> Unit
+        savedInstanceState: Bundle?
     ) {
         super.onViewCreated(view, savedInstanceState)
         // saveButton ← android:id="@+id/saveButton" in fragment_add_tenant.xml
         binding.saveButton.setOnClickListener {
-// Read the three EditTexts in fragment_add_tenant.xml
+            // Read the three EditTexts in fragment_add_tenant.xml
             val name = binding.tenantNameEditText.text.toString().trim()
             val phone = binding.phoneEditText.text.toString().trim()
             val rent = binding.rentEditText.text.toString().trim()
             if (name.isEmpty() || phone.isEmpty() || rent.isEmpty()) {
-// A Fragment is not a Context, so ask for its Activity's
+                // A Fragment is not a Context, so ask for its Activity's
                 Toast.makeText(requireContext(), "Please fill in all fields", Toast.LENGTH_SHORT)
                     .show()
                 return@setOnClickListener
             }
             val tenant = Tenant(name, phone, rent)
-// Add to the shared list (the Dashboard and View Tenants read it)
+            // Add to the shared list (the Dashboard and View Tenants read it)
             TenantRepository.addTenant(tenant)
-// SAFE ARGS: this function was generated from the <action> in
-// nav_graph.xml. Because View Tenants has a <argument> of type
-// Tenant, the function REQUIRES a Tenant: it won't compile without one
+            // SAFE ARGS: this function was generated from the <action> in
+            // nav_graph.xml. Because View Tenants has a <argument> of type
+            // Tenant, the function REQUIRES a Tenant: it won't compile without one
             val action = AddTenantFragmentDirections
                 .actionAddTenantFragmentToViewTenantsFragment(tenant)
-// Ask the NavController to follow the action
+            // Ask the NavController to follow the action
             findNavController().navigate(action)
         }
-        /* The SAVE button is added in Practical 3
     }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-    }*/
     }
 }

@@ -11,7 +11,7 @@ import kotlin.text.format
 import androidx.navigation.fragment.findNavController
 import android.util.Log
 
-private var String = TODO()
+
 
 class DashboardFragment : Fragment() {
     private var _binding: FragmentDashboardBinding? = null
