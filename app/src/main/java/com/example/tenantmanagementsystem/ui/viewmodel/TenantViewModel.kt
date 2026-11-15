@@ -1,70 +1,107 @@
 package com.example.tenantmanagementsystem.ui.viewmodel
 
+import android.app.Application
 import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.map
-// The ViewModel (ui layer) USES the data layer, so it imports from "data"
+import androidx.lifecycle.viewModelScope
+import com.example.tenantmanagementsystem.data.local.TenantDatabase
 import com.example.tenantmanagementsystem.data.model.Tenant
-import  com.example.tenantmanagementsystem.data.repository.TenantRepository
+import com.example.tenantmanagementsystem.data.repository.TenantRepository
+import kotlinx.coroutines.launch
 
+// AndroidViewModel receives the Application context.
+// This is used to initialise the Room database safely.
+class TenantViewModel(application: Application) :
+    AndroidViewModel(application) {
 
-// A Jetpack ViewModel: Android keeps it alive while the screen rotates,
-// and clears it when MainActivity finishes
-class TenantViewModel : ViewModel() {
+    // Build the data layer:
+    // Database → DAO → Repository
+    private val repository = TenantRepository(
+        TenantDatabase.getDatabase(application).tenantDao()
+    )
 
-    // ── 1. THE DATA ───────────────────────────────────────────────
-    // PRIVATE and MUTABLE: only this ViewModel can change it
-    private val _tenants = MutableLiveData<List<Tenant>>(TenantRepository.tenants.toList())
+    // Room is now the source of tenant records.
+    val tenants: LiveData<List<Tenant>> = repository.tenants
 
-    // PUBLIC and READ-ONLY: screens can watch it, not change it
-    val tenants: LiveData<List<Tenant>> = _tenants
-
-    // ── 2. TRANSFORMATIONS: text ready for the screens ────────────
-    // map() makes a NEW LiveData that updates whenever tenants changes
+    // Calculates the number of tenants.
     val tenantCountText: LiveData<String> = tenants.map { list ->
         "Tenants\n${list.size}"
     }
 
+    // Calculates the total rent.
     val totalRentText: LiveData<String> = tenants.map { list ->
-        val total = list.sumOf { it.rent.toDoubleOrNull() ?: 0.0 }
+
+        val total = list.sumOf {
+            it.rent.toDoubleOrNull() ?: 0.0
+        }
+
         "Total rent\nKSh %,.0f".format(total)
     }
 
+    // Produces the tenant information displayed by ViewTenantsFragment.
     val allTenantsText: LiveData<String> = tenants.map { list ->
-        if (list.isEmpty()) "No tenants yet. Add one from the Dashboard."
-        else list.joinToString("\n\n") { it.summary() }
+
+        if (list.isEmpty()) {
+            "No tenants yet. Add one from the Dashboard."
+        } else {
+            list.joinToString("\n\n") {
+                it.summary()
+            }
+        }
     }
 
-    // ── 3. ACTIONS the screens can ask for ────────────────────────
-    // Checks the input and saves the tenant.
-    // Returns the new Tenant, or null if the input was not valid
-    fun addTenant(name: String, phone: String, rent: String): Tenant? {
+    // Validates tenant information and saves it through the Repository.
+    fun addTenant(
+        name: String,
+        phone: String,
+        rent: String
+    ): Tenant? {
+
         val cleanName = name.trim()
         val cleanPhone = phone.trim()
         val cleanRent = rent.trim()
 
-        // Business rule: all three fields are required
-        if (cleanName.isEmpty() || cleanPhone.isEmpty() || cleanRent.isEmpty()) {
+        // All three fields are required.
+        if (
+            cleanName.isEmpty() ||
+            cleanPhone.isEmpty() ||
+            cleanRent.isEmpty()
+        ) {
             return null
         }
 
-        val tenant = Tenant(cleanName, cleanPhone, cleanRent)
+        // Create the tenant object.
+        val tenant = Tenant(
+            cleanName,
+            cleanPhone,
+            cleanRent
+        )
 
-        TenantRepository.addTenant(tenant)                   // ask the DATA LAYER to store it
-        _tenants.value = TenantRepository.tenants.toList()   // every observer updates
+        // Save the tenant asynchronously.
+        viewModelScope.launch {
+            repository.addTenant(tenant)
+        }
 
         return tenant
     }
 
-    // ── 4. LIFECYCLE LOGS ─────────────────────────────────────────
+    // Lifecycle logging.
     init {
-        Log.d("TENANT_LIFECYCLE", "      TenantViewModel: created")
+        Log.d(
+            "TENANT_LIFECYCLE",
+            "TenantViewModel: created"
+        )
     }
 
     override fun onCleared() {
         super.onCleared()
-        Log.d("TENANT_LIFECYCLE", "      TenantViewModel: onCleared")
+
+        Log.d(
+            "TENANT_LIFECYCLE",
+            "TenantViewModel: onCleared"
+        )
     }
 }
+
